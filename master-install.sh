@@ -41,6 +41,7 @@ echo "$master_ip slots=2" > /home/$master_username/mpi_hosts
 
 su - "$master_username" -c "ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa"
 su - "$master_username" -c "cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys"
+su - "$master_username" -c "eval \$(ssh-agent -s) && ssh-add ~/.ssh/id_rsa"
 su - "$master_username" -c "chmod 600 ~/.ssh/authorized_keys"
 
 echo "Master node was configured with username $master_username. Consider adding slaves and checking ssh access to slaves."
