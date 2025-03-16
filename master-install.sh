@@ -44,7 +44,7 @@ su - "$master_username" -c "cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys"
 su - "$master_username" -c "eval \$(ssh-agent -s) && ssh-add ~/.ssh/id_rsa"
 su - "$master_username" -c "chmod 600 ~/.ssh/authorized_keys"
 
-echo "Master node was configured with username $master_username. Consider adding slaves and checking ssh access to slaves."
+echo "Master node was configured with username $master_username."
 
 # Ensure SSH keys are generated
 if [ ! -f "/home/$master_username/.ssh/id_rsa" ]; then
@@ -61,7 +61,7 @@ jq -c '.slaves[]' "$json_file" | while read -r user; do
 
     echo "Adding SSH-key for $USERNAME@$IP"
 
-    sshpass -p "$PASSWORD" ssh-copy-id -o StrictHostKeyChecking=no "$USERNAME@$IP"
+    sshpass -p "$PASSWORD" ssh-copy-id -i "/home/$master_username/.ssh/id_rsa.pub" -o StrictHostKeyChecking=no "$USERNAME@$IP"
 
     echo "SSH-key was added for $USERNAME@$IP"
 done
