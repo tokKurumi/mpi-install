@@ -53,7 +53,7 @@ if [ ! -f "/home/$master_username/.ssh/id_rsa" ]; then
 fi
 
 # Add users and distribute SSH keys to the slaves
-jq -c '.users[]' "$json_file" | while read -r user; do
+jq -c '.slaves[]' "$json_file" | while read -r user; do
     USERNAME=$(echo "$user" | jq -r '.username')
     IP=$(echo "$user" | jq -r '.ip')
     PASSWORD=$(echo "$user" | jq -r '.password')
