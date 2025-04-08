@@ -11,44 +11,52 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 # Start services in correct order
 start_services() {
     local config_file=$1
-    local user=$(jq -r '.master.username' "$config_file")
-    local password=$(jq -r '.master.password' "$config_file")
 
     info "Starting services in proper sequence..."
 
-    local master_ip=$(jq -r '.master.ip' "$config_file")
-    local slave_ips=($(jq -r '.slaves[].ip' "$config_file"))
+    local master=$(jq -r '.master' "$config_file")
+    local master_ip=$(jq -r '.ip' <<<"$master")
+    local master_user=$(jq -r '.username' <<<"$master")
+    local master_pass=$(jq -r '.password' <<<"$master")
 
-    # Start Munge everywhere
     info "Starting Munge on all nodes..."
-    sudo systemctl restart munge || {
+
+    # Start Munge on master
+    echo "$master_pass" | sudo -S systemctl restart munge || {
         error "Failed to start Munge on master"
         return 1
     }
 
-    for slave_ip in "${slave_ips[@]}"; do
-        local slave_pass=$(jq -r ".slaves[] | select(.ip == \"$slave_ip\") | .password" "$config_file")
-        sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "${user}@${slave_ip}" \
+    # Start Munge on slaves
+    jq -c '.slaves[]' "$config_file" | while read -r slave; do
+        local slave_ip=$(jq -r '.ip' <<<"$slave")
+        local slave_user=$(jq -r '.username' <<<"$slave")
+        local slave_pass=$(jq -r '.password' <<<"$slave")
+
+        sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "${slave_user}@${slave_ip}" \
             "sudo systemctl restart munge" || {
-            error "Failed to start Munge on ${user}@${slave_ip}"
+            error "Failed to start Munge on ${slave_ip}"
             return 1
         }
     done
 
     # Start slurmctld on master
     info "Starting slurmctld on master..."
-    sudo systemctl restart slurmctld || {
+    echo "$master_pass" | sudo -S systemctl restart slurmctld || {
         error "Failed to start slurmctld"
         return 1
     }
 
     # Start slurmd on all slaves
     info "Starting slurmd on slave nodes..."
-    for slave_ip in "${slave_ips[@]}"; do
-        local slave_pass=$(jq -r ".slaves[] | select(.ip == \"$slave_ip\") | .password" "$config_file")
-        sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "${user}@${slave_ip}" \
+    jq -c '.slaves[]' "$config_file" | while read -r slave; do
+        local slave_ip=$(jq -r '.ip' <<<"$slave")
+        local slave_user=$(jq -r '.username' <<<"$slave")
+        local slave_pass=$(jq -r '.password' <<<"$slave")
+
+        sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "${slave_user}@${slave_ip}" \
             "sudo systemctl restart slurmd" || {
-            error "Failed to start slurmd on ${user}@${slave_ip}"
+            error "Failed to start slurmd on ${slave_ip}"
             return 1
         }
     done
@@ -91,7 +99,6 @@ verify_cluster() {
 # Test Slurm with Hello World
 test_slurm() {
     local config_file=$1
-    local user=$(jq -r '.master.username' "$config_file")
 
     info "Running Hello World test across cluster..."
 
@@ -110,14 +117,11 @@ test_slurm() {
 
     chmod +x /tmp/hello_world.sh
 
-    # Distribute to all nodes
-    for ip in $(jq -r '.master.ip, .slaves[].ip' "$config_file"); do
-        local pass
-        if [ "$ip" == "$(jq -r '.master.ip' "$config_file")" ]; then
-            pass=$(jq -r '.master.password' "$config_file")
-        else
-            pass=$(jq -r ".slaves[] | select(.ip == \"$ip\") | .password" "$config_file")
-        fi
+    # Distribute to all nodes (master + slaves)
+    jq -c '.master, .slaves[]' "$config_file" | while read -r node; do
+        local ip=$(jq -r '.ip' <<<"$node")
+        local user=$(jq -r '.username' <<<"$node")
+        local pass=$(jq -r '.password' <<<"$node")
 
         sshpass -p "$pass" scp -o StrictHostKeyChecking=no \
             /tmp/hello_world.sh \
@@ -162,7 +166,7 @@ main() {
 
     success "Cluster is fully operational"
     info "Nodes available: $(sinfo -h -o "%D")"
-    info "Try: srun -N$(jq '.slaves | length' "$config_file") hostname"
+    info "Try: srun -N${slave_count} hostname"
 }
 
 main "$@"
