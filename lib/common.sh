@@ -37,13 +37,13 @@ function install_package() {
     info "Installing package: $package"
 
     # Update package list (only once at the beginning would be better)
-    if ! sudo apt-get update >/dev/null 2>&1; then
+    if ! sudo apt-get update; then
         error "Failed to update package list"
         return 1
     fi
 
     # Install package
-    if ! sudo apt-get install -y "$package" >/dev/null 2>&1; then
+    if ! sudo apt-get install -y "$package"; then
         error "Failed to install package $package"
         return 1
     fi
@@ -70,7 +70,7 @@ function validate_config() {
         }
     fi
 
-    if ! jq empty "$config_file" >/dev/null 2>&1; then
+    if ! jq empty "$config_file"; then
         error "Invalid JSON configuration file: $config_file"
         return 1
     fi
