@@ -16,26 +16,22 @@ transfer_munge_key() {
 
     info "Transferring munge.key to ${slave_user}@${slave_ip}"
 
-    # Create /etc/munge directory on the slave node
-    if ! sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" \
-        "sudo mkdir -p /etc/munge"; then
-        error "Failed to create /etc/munge on ${slave_ip}"
-        return 1
-    fi
-
-    # Transfer the munge.key file to the slave node
-    if ! sudo sshpass -p "$slave_pass" scp -o StrictHostKeyChecking=no \
-        "/etc/munge/munge.key" \
-        "${slave_user}@${slave_ip}:/etc/munge/munge.key"; then
+    # Copy to /tmp because /etc/munge is not writable by the user
+    if ! sshpass -p "$slave_pass" scp -o StrictHostKeyChecking=no \
+        "$munge_key" \
+        "${slave_user}@${slave_ip}:/tmp/munge.key"; then
         error "Failed to transfer munge.key to ${slave_ip}"
         return 1
     fi
 
-    # Set proper permissions on the munge.key file
-    sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" \
-        "sudo chown munge:munge /etc/munge/munge.key && \
-        sudo chmod 0400 /etc/munge/munge.key" || {
-        error "Failed to set permissions for munge.key on ${slave_ip}"
+    # Transfer tmp/munge.key to /etc/munge and set permissions
+    sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" "
+        sudo mkdir -p /etc/munge && \
+        sudo mv /tmp/munge.key /etc/munge/munge.key && \
+        sudo chown munge:munge /etc/munge/munge.key && \
+        sudo chmod 0400 /etc/munge/munge.key
+    " || {
+        error "Failed to set munge.key permissions on ${slave_ip}"
         return 1
     }
 }
