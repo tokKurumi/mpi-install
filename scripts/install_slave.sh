@@ -8,18 +8,6 @@ set -euo pipefail
 SCRIPT_DIR=$(dirname "$0")
 source "${SCRIPT_DIR}/../lib/common.sh"
 
-# Transfer common.sh to slave node
-transfer_common() {
-    local slave_ip=$1
-    local slave_user=$2
-
-    info "Transferring common.sh to ${slave_user}@${slave_ip}"
-    if ! scp "${SCRIPT_DIR}/../lib/common.sh" "${slave_user}@${slave_ip}:/tmp/common.sh"; then
-        error "Failed to transfer common.sh to ${slave_ip}"
-        return 1
-    fi
-}
-
 # Remote installation function
 install_on_slave() {
     local slave_ip=$1

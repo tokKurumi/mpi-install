@@ -131,6 +131,7 @@ main() {
     local config_file=$1
 
     info "Starting master node installation"
+
     load_config "$config_file"
     install_dependencies
     setup_munge

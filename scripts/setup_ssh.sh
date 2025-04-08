@@ -14,7 +14,13 @@ setup_master_ssh() {
     install_package "openssh-server"
     install_package "sshpass"
     install_package "openssh-client"
-    sudo systemctl enable --now ssh
+
+    if ! sudo systemctl is-active --quiet ssh; then
+        sudo systemctl enable --now ssh || {
+            error "Failed to start SSH service"
+            exit 1
+        }
+    fi
 }
 
 # Generate master key if not exists
@@ -23,66 +29,109 @@ generate_master_key() {
 
     if [[ ! -f "$key_path" ]]; then
         info "Generating SSH key pair on master..."
-        ssh-keygen -t rsa -b 4096 -N "" -f "$key_path" >/dev/null
+        mkdir -p "$HOME/.ssh"
+        chmod 700 "$HOME/.ssh"
+        ssh-keygen -t rsa -b 4096 -N "" -f "$key_path" >/dev/null || {
+            error "Failed to generate SSH key"
+            exit 1
+        }
         success "Master SSH key generated at $key_path"
     else
         info "Using existing master SSH key at $key_path"
     fi
 }
 
-# Distribute master key to slaves
-setup_slaves_ssh() {
-    local config_file="$1"
-    local slave_count=$(jq '.slaves | length' "$config_file")
+# Transfer common.sh to slave node
+transfer_common() {
+    local slave_ip=$1
+    local slave_user=$2
+    local slave_pass=$3
 
-    for ((i = 0; i < slave_count; i++)); do
-        local slave_user=$(jq -r ".slaves[$i].username" "$config_file")
-        local slave_host=$(jq -r ".slaves[$i].ip" "$config_file")
-        local slave_pass=$(jq -r ".slaves[$i].password" "$config_file")
+    info "Transferring common.sh to ${slave_user}@${slave_ip}"
 
-        info "Configuring slave $slave_host..."
+    if ! sshpass -p "$slave_pass" scp -o StrictHostKeyChecking=no \
+        "${SCRIPT_DIR}/../lib/common.sh" \
+        "${slave_user}@${slave_ip}:/tmp/common.sh"; then
+        error "Failed to transfer common.sh to ${slave_ip}"
+        return 1
+    fi
 
-        # Install SSH packages on slave
-        echo "$slave_pass" | sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_host" \
-            "sudo -S apt-get update && sudo -S apt-get install -y openssh-server openssh-client"
-
-        # Generate slave key and add master's pubkey
-        sshpass -p "$slave_pass" ssh "$slave_user@$slave_host" \
-            "mkdir -p ~/.ssh && chmod 700 ~/.ssh && \
-            ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa >/dev/null && \
-            echo '$(cat ~/.ssh/id_rsa.pub)' >> ~/.ssh/authorized_keys && \
-            chmod 600 ~/.ssh/authorized_keys"
-
-        # Enable passwordless sudo for ssh commands
-        echo "$slave_pass" | sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_host" \
-            "echo '$slave_user ALL=(ALL) NOPASSWD:ALL' | sudo -S tee /etc/sudoers.d/$slave_user-nopasswd && \
-            sudo -S chmod 440 /etc/sudoers.d/$slave_user-nopasswd"
-
-        # Copy master's key to slave
-        sshpass -p "$slave_pass" ssh-copy-id -f -i ~/.ssh/id_rsa.pub "$slave_user@$slave_host"
-
-        success "Slave $slave_host configured"
-    done
+    # Set proper permissions on slave node
+    sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" \
+        "chmod +x /tmp/common.sh"
 }
 
-verify_ssh_access() {
-    local config_file="$1"
-    local slave_count=$(jq '.slaves | length' "$config_file")
+# Install packages on slave node
+install_slave_packages() {
+    local slave_ip=$1
+    local slave_user=$2
+    local slave_pass=$3
 
-    for ((i = 0; i < slave_count; i++)); do
-        local slave_user=$(jq -r ".slaves[$i].username" "$config_file")
-        local slave_host=$(jq -r ".slaves[$i].ip" "$config_file")
+    info "Installing packages on ${slave_ip}"
 
-        info "Verifying SSH access to $slave_host..."
-        if ! ssh -o BatchMode=yes -o ConnectTimeout=5 "$slave_user@$slave_host" exit; then
-            error "Failed to connect to slave $slave_host"
-            exit 1
-        fi
-        success "SSH access to $slave_host verified"
-    done
+    sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" \
+        "source /tmp/common.sh && \
+        install_package openssh-server && \
+        install_package openssh-client && \
+        sudo systemctl enable --now ssh" || {
+        error "Failed to install packages on ${slave_ip}"
+        return 1
+    }
+}
+
+# Configure slave SSH access
+configure_slave_ssh() {
+    local slave_ip=$1
+    local slave_user=$2
+    local slave_pass=$3
+
+    info "Configuring SSH on ${slave_ip}"
+
+    # Create SSH directory and keys
+    sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" \
+        "mkdir -p ~/.ssh && \
+        chmod 700 ~/.ssh && \
+        [ -f ~/.ssh/id_rsa ] || ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa >/dev/null && \
+        grep -qF '$(cat ~/.ssh/id_rsa.pub)' ~/.ssh/authorized_keys 2>/dev/null || \
+        cat >> ~/.ssh/authorized_keys && \
+        chmod 600 ~/.ssh/authorized_keys" <~/.ssh/id_rsa.pub || {
+        error "Failed to configure SSH keys on ${slave_ip}"
+        return 1
+    }
+
+    # Configure passwordless sudo
+    sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" \
+        "echo '$slave_user ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/${slave_user}-nopasswd >/dev/null && \
+        sudo chmod 440 /etc/sudoers.d/${slave_user}-nopasswd" || {
+        error "Failed to configure sudo on ${slave_ip}"
+        return 1
+    }
+}
+
+# Setup individual slave node
+setup_slave_node() {
+    local slave_ip=$1
+    local slave_user=$2
+    local slave_pass=$3
+
+    info "Processing slave node ${slave_user}@${slave_ip}"
+
+    transfer_common "$slave_ip" "$slave_user" "$slave_pass"
+    install_slave_packages "$slave_ip" "$slave_user" "$slave_pass"
+    configure_slave_ssh "$slave_ip" "$slave_user" "$slave_pass"
+
+    # Verify SSH access
+    if ! ssh -o BatchMode=yes -o ConnectTimeout=5 "$slave_user@$slave_ip" exit; then
+        error "SSH verification failed for ${slave_ip}"
+        return 1
+    fi
+
+    success "Slave node ${slave_ip} configured successfully"
 }
 
 main() {
+    require_sudo
+
     if [[ $# -ne 1 ]]; then
         error "Usage: $0 <config_file>"
         exit 1
@@ -91,12 +140,21 @@ main() {
     local config_file="$1"
 
     info "Starting SSH configuration from master node"
+
     setup_master_ssh
     generate_master_key
-    setup_slaves_ssh "$config_file"
-    verify_ssh_access "$config_file"
 
-    success "SSH configuration completed. Master can now access all slaves without password"
+    local slave_count=$(jq '.slaves | length' "$config_file")
+    for ((i = 0; i < slave_count; i++)); do
+        local slave_user=$(jq -r ".slaves[$i].username" "$config_file")
+        local slave_host=$(jq -r ".slaves[$i].ip" "$config_file")
+        local slave_pass=$(jq -r ".slaves[$i].password" "$config_file")
+
+        setup_slave_node "$slave_host" "$slave_user" "$slave_pass"
+    done
+
+    success "SSH configuration completed successfully"
+    info "Master can now access all slaves without password"
 }
 
 main "$@"
