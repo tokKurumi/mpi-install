@@ -27,7 +27,7 @@ transfer_munge_key() {
     }
 
     # 3. Transfer with sudo and immediate cleanup
-    if ! sshpass -p "$slave_pass" sudo scp -o StrictHostKeyChecking=no \
+    if ! sshpass -p "$slave_pass" scp -o StrictHostKeyChecking=no \
         "$temp_key" \
         "${slave_user}@${slave_ip}:/tmp/munge.key"; then
         sudo rm -f "$temp_key"
