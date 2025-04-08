@@ -12,8 +12,9 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 verify_slave_environment() {
     local slave_ip=$1
     local slave_user=$2
+    local slave_pass=$3
 
-    ssh "${slave_user}@${slave_ip}" '
+    sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" '
     if [ -f /etc/slurm/slurm.conf ]; then
         echo "ERROR: This host is already configured as master" >&2
         exit 1
@@ -25,10 +26,11 @@ verify_slave_environment() {
 configure_slave_node() {
     local slave_ip=$1
     local slave_user=$2
+    local slave_pass=$3
 
     info "Configuring slave node ${slave_ip}"
 
-    ssh "${slave_user}@${slave_ip}" '
+    sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" '
     set -euo pipefail
     source /tmp/common.sh
 
@@ -82,11 +84,13 @@ process_slaves() {
     for ((i = 0; i < slave_count; i++)); do
         local slave_ip=$(jq -r ".slaves[$i].ip" "$config_file")
         local slave_user=$(jq -r ".slaves[$i].username" "$config_file")
+        local slave_pass=$(jq -r ".slaves[$i].password" "$config_file")
 
         info "Configuring slave $((i + 1))/$slave_count: ${slave_user}@${slave_ip}"
 
-        verify_slave_environment "$slave_ip" "$slave_user"
-        configure_slave_node "$slave_ip" "$slave_user"
+        verify_slave_environment "$slave_ip" "$slave_user" "$slave_pass"
+        transfer_common "$slave_ip" "$slave_user" "$slave_pass"
+        configure_slave_node "$slave_ip" "$slave_user" "$slave_pass"
 
         success "Slave ${slave_ip} configured successfully"
     done
