@@ -18,7 +18,7 @@ transfer_munge_key() {
 
     # 1. Create secure temp file with restricted permissions
     local temp_key=$(sudo mktemp /tmp/munge.key.XXXXXX)
-    sudo chmod 600 "$temp_key"
+    sudo chmod 644 "$temp_key"
 
     # 2. Copy key to temp location with sudo
     sudo cp -f /etc/munge/munge.key "$temp_key" || {
