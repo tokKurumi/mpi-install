@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# configure_slave.sh - Slave nodes configuration (called from master)
+# configure_slave.sh - Slave nodes configuration
 
 set -euo pipefail
 
