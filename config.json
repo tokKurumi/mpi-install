@@ -9,13 +9,11 @@
     },
     "slaves": [
         {
-            "id": 1,
             "username": "slave",
             "ip": "192.168.0.28",
             "password": "slave"
         },
         {
-            "id": 2,
             "username": "slave",
             "ip": "192.168.0.29",
             "password": "slave"
