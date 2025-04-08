@@ -14,26 +14,43 @@ transfer_munge_key() {
     local slave_user=$2
     local slave_pass=$3
 
-    info "Transferring munge.key to ${slave_user}@${slave_ip}"
+    info "Securely transferring munge.key to ${slave_user}@${slave_ip}"
 
-    # Copy to /tmp because /etc/munge is not writable by the user
+    # 1. Create secure temp file with restricted permissions
+    local temp_key=$(sudo mktemp /tmp/munge.key.XXXXXX)
+    sudo chmod 600 "$temp_key"
+
+    # 2. Copy key to temp location with sudo
+    sudo cp -f /etc/munge/munge.key "$temp_key" || {
+        error "Failed to copy munge.key to temp location"
+        return 1
+    }
+
+    # 3. Transfer with sudo and immediate cleanup
     if ! sshpass -p "$slave_pass" sudo scp -o StrictHostKeyChecking=no \
-        "/etc/munge/munge.key" \
+        "$temp_key" \
         "${slave_user}@${slave_ip}:/tmp/munge.key"; then
+        sudo rm -f "$temp_key"
         error "Failed to transfer munge.key to ${slave_ip}"
         return 1
     fi
 
-    # Transfer tmp/munge.key to /etc/munge and set permissions
+    # 4. Clean up local temp file immediately after transfer
+    sudo rm -f "$temp_key"
+
+    # 5. Set proper permissions on slave
     sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" "
         sudo mkdir -p /etc/munge && \
-        sudo mv /tmp/munge.key /etc/munge/munge.key && \
+        sudo mv -f /tmp/munge.key /etc/munge/munge.key && \
         sudo chown munge:munge /etc/munge/munge.key && \
-        sudo chmod 0400 /etc/munge/munge.key
+        sudo chmod 0400 /etc/munge/munge.key && \
+        sudo rm -f /tmp/munge.key
     " || {
         error "Failed to set munge.key permissions on ${slave_ip}"
         return 1
     }
+
+    success "Munge key successfully transferred to ${slave_ip}"
 }
 
 # Configure slave node
