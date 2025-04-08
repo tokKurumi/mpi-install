@@ -20,7 +20,10 @@ install_on_slave() {
     source /tmp/common.sh
 
     # Install packages
-    install_package slurmd munge mpich libmpich-dev
+    install_package slurmd
+    install_package munge
+    install_package mpich
+    install_package libmpich-dev
 
     # Setup Munge directory (if not exists)
     sudo mkdir -p /etc/munge

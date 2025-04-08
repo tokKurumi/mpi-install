@@ -17,7 +17,6 @@ install_dependencies() {
     install_package "slurmd"
     install_package "munge"
     install_package "jq"
-    install_package "sshpass"
 }
 
 # Generate Munge key
