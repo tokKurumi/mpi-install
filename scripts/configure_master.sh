@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# install_master.sh - Master node installation script for Slurm+Munge cluster
+# configure_master.sh - Master node installation script for Slurm+Munge cluster
 
 set -euo pipefail
 
