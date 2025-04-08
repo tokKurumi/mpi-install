@@ -16,11 +16,8 @@ transfer_munge_key() {
 
     info "Transferring munge.key to ${slave_user}@${slave_ip}"
 
-    local munge_dir="/etc/munge"
-    local munge_key="${munge_dir}/munge.key"
-
     if ! sshpass -p "$slave_pass" scp -o StrictHostKeyChecking=no \
-        "$munge_key" \
+        "/etc/munge/munge.key" \
         "${slave_user}@${slave_ip}:/tmp/munge.key"; then
         error "Failed to transfer munge.key to ${slave_ip}"
         return 1
@@ -35,20 +32,6 @@ transfer_munge_key() {
         error "Failed to set munge.key permissions on ${slave_ip}"
         return 1
     }
-}
-
-# Verify slave environment
-verify_slave_environment() {
-    local slave_ip=$1
-    local slave_user=$2
-    local slave_pass=$3
-
-    sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_ip" '
-    if [ -f /etc/slurm/slurm.conf ]; then
-        echo "ERROR: This host is already configured as master" >&2
-        exit 1
-    fi
-    '
 }
 
 # Configure slave node
@@ -112,23 +95,11 @@ process_slaves() {
 
         info "Configuring slave $((i + 1))/$slave_count: ${slave_user}@${slave_ip}"
 
-        verify_slave_environment "$slave_ip" "$slave_user" "$slave_pass"
         transfer_munge_key "$slave_ip" "$slave_user" "$slave_pass"
         configure_slave_node "$slave_ip" "$slave_user" "$slave_pass"
 
         success "Slave ${slave_ip} configured successfully"
     done
-}
-
-# Verify master has munge.key
-verify_munge_key() {
-    local munge_key="/etc/munge/munge.key"
-    if [ ! -f "$munge_key" ]; then
-        error "Munge key not found on master at $munge_key"
-        exit 1
-    fi
-    
-    info "Munge key found at $munge_key"
 }
 
 main() {
@@ -139,7 +110,8 @@ main() {
 
     local config_file=$1
 
-    verify_munge_key
+    info "Starting slave nodes configuration"
+
     process_slaves "$config_file"
 
     success "All slave nodes configured"

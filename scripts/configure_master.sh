@@ -132,14 +132,14 @@ main() {
 
     local config_file=$1
 
-    info "Starting master node installation"
+    info "Starting master node configuration"
 
     install_dependencies
     setup_munge
     setup_slurm_config "$config_file"
     enable_services "$config_file"
 
-    success "Master node installation completed successfully"
+    success "Master node configuration completed successfully"
     info "Note: Services will be started after slave nodes configuration"
 }
 
