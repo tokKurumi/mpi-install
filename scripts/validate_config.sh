@@ -68,7 +68,7 @@ validate_config_content() {
     if [[ ${#errors[@]} -gt 0 ]]; then
         error "Found ${#errors[@]} configuration issues:"
         for err in "${errors[@]}"; do
-            error "  - $err"
+            error " - $err"
         done
         exit 1
     fi
