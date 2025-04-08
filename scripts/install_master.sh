@@ -121,6 +121,8 @@ enable_services() {
 }
 
 main() {
+    require_sudo
+
     if [[ $# -ne 1 ]]; then
         error "Usage: $0 <config_file>"
         exit 1

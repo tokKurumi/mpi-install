@@ -78,3 +78,27 @@ function validate_config() {
     # Add more specific validations as needed
     return 0
 }
+
+# Check for sudo privileges
+# Usage: check_sudo || exit 1
+function check_sudo() {
+    if [[ $EUID -ne 0 ]]; then
+        if ! sudo -n true 2>/dev/null; then
+            error "This script requires sudo privileges. Please run with sudo."
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Check and request sudo (interactive mode)
+# Usage: require_sudo
+function require_sudo() {
+    if [[ $EUID -ne 0 ]]; then
+        info "Script requires sudo privileges. Requesting access..."
+        if ! sudo -v; then
+            error "Failed to get sudo access"
+            exit 1
+        fi
+    fi
+}
