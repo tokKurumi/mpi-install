@@ -17,7 +17,7 @@ transfer_munge_key() {
     info "Transferring munge.key to ${slave_user}@${slave_ip}"
 
     # Copy to /tmp because /etc/munge is not writable by the user
-    if ! sshpass -p "$slave_pass" scp -o StrictHostKeyChecking=no \
+    if ! sshpass -p "$slave_pass" sudo scp -o StrictHostKeyChecking=no \
         "/etc/munge/munge.key" \
         "${slave_user}@${slave_ip}:/tmp/munge.key"; then
         error "Failed to transfer munge.key to ${slave_ip}"
