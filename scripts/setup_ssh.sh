@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # setup_ssh.sh - Configure SSH access from master to slaves
-# MUST be executed ONLY on master node
 
 set -euo pipefail
 
