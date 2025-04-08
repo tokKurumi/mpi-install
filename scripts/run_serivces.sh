@@ -30,7 +30,7 @@ start_services() {
         local slave_pass=$(jq -r ".slaves[] | select(.ip == \"$slave_ip\") | .password" "$config_file")
         sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "${user}@${slave_ip}" \
             "sudo systemctl restart munge" || {
-            error "Failed to start Munge on ${slave_ip}"
+            error "Failed to start Munge on ${user}@${slave_ip}"
             return 1
         }
     done
@@ -48,7 +48,7 @@ start_services() {
         local slave_pass=$(jq -r ".slaves[] | select(.ip == \"$slave_ip\") | .password" "$config_file")
         sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "${user}@${slave_ip}" \
             "sudo systemctl restart slurmd" || {
-            error "Failed to start slurmd on ${slave_ip}"
+            error "Failed to start slurmd on ${user}@${slave_ip}"
             return 1
         }
     done
