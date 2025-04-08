@@ -59,9 +59,6 @@ main() {
     local config_file=$1
     require_sudo
 
-    info "Loading configuration"
-    load_config "$config_file"
-
     # Get all slaves from config
     local slave_count=$(jq '.slaves | length' "$config_file")
 
