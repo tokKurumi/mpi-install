@@ -44,8 +44,8 @@ setup_slaves_ssh() {
         info "Configuring slave $slave_host..."
 
         # Install SSH packages on slave
-        sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_host" \
-            "sudo apt-get update && sudo apt-get install -y openssh-server openssh-client"
+        echo "$slave_pass" | sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_host" \
+            "sudo -S apt-get update && sudo -S apt-get install -y openssh-server openssh-client"
 
         # Generate slave key and add master's pubkey
         sshpass -p "$slave_pass" ssh "$slave_user@$slave_host" \
@@ -53,6 +53,11 @@ setup_slaves_ssh() {
             ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa >/dev/null && \
             echo '$(cat ~/.ssh/id_rsa.pub)' >> ~/.ssh/authorized_keys && \
             chmod 600 ~/.ssh/authorized_keys"
+
+        # Enable passwordless sudo for ssh commands
+        echo "$slave_pass" | sshpass -p "$slave_pass" ssh -o StrictHostKeyChecking=no "$slave_user@$slave_host" \
+            "echo '$slave_user ALL=(ALL) NOPASSWD:ALL' | sudo -S tee /etc/sudoers.d/$slave_user-nopasswd && \
+            sudo -S chmod 440 /etc/sudoers.d/$slave_user-nopasswd"
 
         # Copy master's key to slave
         sshpass -p "$slave_pass" ssh-copy-id -f -i ~/.ssh/id_rsa.pub "$slave_user@$slave_host"
