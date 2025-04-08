@@ -38,14 +38,9 @@ install_on_slave() {
     '
 }
 
-main() {
-    if [[ $# -ne 1 ]]; then
-        error "Usage: $0 <config_file>"
-        exit 1
-    fi
-
+# Process each slave node
+process_slaves() {
     local config_file=$1
-    require_sudo
 
     # Get all slaves from config
     local slave_count=$(jq '.slaves | length' "$config_file")
@@ -61,6 +56,16 @@ main() {
 
         success "Slave ${slave_ip} prepared successfully"
     done
+}
+
+main() {
+    if [[ $# -ne 1 ]]; then
+        error "Usage: $0 <config_file>"
+        exit 1
+    fi
+
+    local config_file=$1
+    process_slaves "$config_file"
 }
 
 main "$@"

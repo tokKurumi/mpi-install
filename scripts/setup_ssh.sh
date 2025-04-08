@@ -129,6 +129,20 @@ setup_slave_node() {
     success "Slave node ${slave_ip} configured successfully"
 }
 
+# Setup all slave nodes from configuration file
+setup_all_slaves() {
+    local config_file="$1"
+
+    local slave_count=$(jq '.slaves | length' "$config_file")
+    for ((i = 0; i < slave_count; i++)); do
+        local slave_user=$(jq -r ".slaves[$i].username" "$config_file")
+        local slave_host=$(jq -r ".slaves[$i].ip" "$config_file")
+        local slave_pass=$(jq -r ".slaves[$i].password" "$config_file")
+
+        setup_slave_node "$slave_host" "$slave_user" "$slave_pass"
+    done
+}
+
 main() {
     require_sudo
 
@@ -144,14 +158,7 @@ main() {
     setup_master_ssh
     generate_master_key
 
-    local slave_count=$(jq '.slaves | length' "$config_file")
-    for ((i = 0; i < slave_count; i++)); do
-        local slave_user=$(jq -r ".slaves[$i].username" "$config_file")
-        local slave_host=$(jq -r ".slaves[$i].ip" "$config_file")
-        local slave_pass=$(jq -r ".slaves[$i].password" "$config_file")
-
-        setup_slave_node "$slave_host" "$slave_user" "$slave_pass"
-    done
+    setup_all_slaves "$config_file"
 
     success "SSH configuration completed successfully"
     info "Master can now access all slaves without password"
