@@ -27,7 +27,7 @@ validate_config_file() {
 validate_config_content() {
     local config_file=$1
     local required_master_fields=("username" "ip" "password" "cluster_name" "slurmctld_port" "slurmd_port")
-    local required_slave_fields=("id" "username" "password")
+    local required_slave_fields=("username" "ip" "password")
     local errors=()
 
     # Validate master node configuration
