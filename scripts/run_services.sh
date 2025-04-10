@@ -68,7 +68,7 @@ verify_cluster() {
 
     info "Verifying cluster health..."
 
-    local expected_nodes=$(($(jq '.slaves | length' "$config_file") + 1))
+    local expected_nodes=$(jq '.slaves | length' "$config_file")
     local retries=5
     local delay=10
 
@@ -104,21 +104,21 @@ test_slurm() {
 
     local output_file="/tmp/slurm_test.out"
     local slave_count=$(jq '.slaves | length' "$config_file")
-    local total_nodes=$((slave_count + 1))
+    local total_nodes=$slave_count
 
     # Create test script
-    cat <<-'EOF' >/tmp/hello_world.sh
-    #!/bin/bash
-    echo "Hello World from $(hostname) (SLURM_NODEID: $SLURM_NODEID)"
-    echo "Job ID: $SLURM_JOB_ID"
-    echo "CPUs on node: $(nproc)"
-    exit 0
+    cat <<-EOF >/tmp/hello_world.sh
+	#!/bin/bash
+	echo "Hello World from $(hostname) (SLURM_NODEID: $SLURM_NODEID)"
+	echo "Job ID: $SLURM_JOB_ID"
+	echo "CPUs on node: $(nproc)"
+	exit 0
 	EOF
 
     chmod +x /tmp/hello_world.sh
 
-    # Distribute to all nodes (master + slaves)
-    jq -c '.master, .slaves[]' "$config_file" | while read -r node; do
+    # Distribute to slave nodes
+    jq -c '.slaves[]' "$config_file" | while read -r node; do
         local ip=$(jq -r '.ip' <<<"$node")
         local user=$(jq -r '.username' <<<"$node")
         local pass=$(jq -r '.password' <<<"$node")
