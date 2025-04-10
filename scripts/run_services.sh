@@ -123,8 +123,6 @@ test_slurm() {
         local user=$(jq -r '.username' <<<"$node")
         local pass=$(jq -r '.password' <<<"$node")
 
-        info "Doing SSH to ${user}@${ip}"
-
         sshpass -p "$pass" scp -o StrictHostKeyChecking=no \
             /tmp/hello_world.sh \
             "${user}@${ip}:/tmp/hello_world.sh" || {
@@ -170,7 +168,6 @@ main() {
 
     success "Cluster is fully operational"
     info "Nodes available: $(sinfo -h -o "%D")"
-    info "Try: srun -N${slave_count} hostname"
 }
 
 main "$@"
