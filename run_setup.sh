@@ -10,7 +10,7 @@ if [[ $# -ne 1 ]]; then
     exit 1
 fi
 
-local config_file=$1
+config_file=$1
 
 # Validate config first
 log "Validating configuration..."
