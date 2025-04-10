@@ -123,16 +123,18 @@ test_slurm() {
         local user=$(jq -r '.username' <<<"$node")
         local pass=$(jq -r '.password' <<<"$node")
 
+        info "Doing SSH to ${user}@${ip}"
+
         sshpass -p "$pass" scp -o StrictHostKeyChecking=no \
             /tmp/hello_world.sh \
             "${user}@${ip}:/tmp/hello_world.sh" || {
-            error "Failed to copy test script to ${ip}"
+            error "Failed to copy test script to $slave_user@$slave_ip"
             return 1
         }
 
         sshpass -p "$pass" ssh -o StrictHostKeyChecking=no "${user}@${ip}" \
             "chmod +x /tmp/hello_world.sh" || {
-            error "Failed to set permissions on ${ip}"
+            error "Failed to set permissions on $slave_user@$slave_ip"
             return 1
         }
     done
