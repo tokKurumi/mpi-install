@@ -5,6 +5,8 @@ set -euo pipefail
 # Load common functions
 source ./lib/common.sh
 
+require_sudo
+
 if [[ $# -ne 1 ]]; then
     error "Usage: $0 <config_file>"
     exit 1
