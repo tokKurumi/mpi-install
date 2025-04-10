@@ -87,7 +87,7 @@ verify_cluster() {
             return 0
         fi
 
-        warn "Attempt ${i}/${retries}: ${active_nodes}/${expected_nodes} nodes ready"
+        info "Attempt ${i}/${retries}: ${active_nodes}/${expected_nodes} nodes ready"
         [[ $i -lt $retries ]] && sleep $delay
     done
 
