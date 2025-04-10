@@ -13,27 +13,23 @@ fi
 config_file=$1
 
 # Validate config first
-log "Validating configuration..."
-./scripts/0_validate_config.sh "$config_file"
+info "Validating configuration..."
+./scripts/validate_config.sh "$config_file"
 
 # Setup SSH
-log "Setting up SSH keys..."
-./scripts/1_setup_ssh.sh "$config_file"
+info "Setting up SSH keys..."
+./scripts/setup_ssh.sh "$config_file"
 
-# Install master
-log "Installing master node..."
-./scripts/2_install_master.sh "$config_file"
+# Configure master
+info "Configurring master node..."
+./scripts/configure_master.sh "$config_file"
 
-# Install slaves
-log "Installing slave nodes..."
-./scripts/3_install_slave.sh "$config_file"
+# Configure slaves
+info "Installing slave nodes..."
+./scripts/configure_slave.sh "$config_file"
 
-# Configure services
-log "Configuring cluster services..."
-./scripts/4_configure_services.sh "$config_file"
+# Running & verifying services
+info "Running and verifying cluster services..."
+./scripts/run_services.sh "$config_file"
 
-# Verify
-log "Verifying cluster..."
-./scripts/5_verify_cluster.sh "$config_file"
-
-log "Cluster setup completed successfully!"
+success "Cluster setup completed successfully!"
