@@ -109,9 +109,9 @@ test_slurm() {
     # Create test script
     cat <<-EOF >/tmp/hello_world.sh
 	#!/bin/bash
-	echo "Hello World from $(hostname) (SLURM_NODEID: $SLURM_NODEID)"
-	echo "Job ID: $SLURM_JOB_ID"
-	echo "CPUs on node: $(nproc)"
+	echo "Hello World from \$(hostname) (SLURM_NODEID: \$SLURM_NODEID)"
+	echo "Job ID: \$SLURM_JOB_ID"
+	echo "CPUs on node: \$(nproc)"
 	exit 0
 	EOF
 
