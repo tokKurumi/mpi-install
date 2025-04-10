@@ -41,7 +41,6 @@ setup_munge() {
     fi
 }
 
-# Generate Slurm configuration
 setup_slurm_config() {
     local config_file=$1
 
@@ -63,10 +62,10 @@ setup_slurm_config() {
         info "Existing slurm.conf backed up to $backup_file"
     fi
 
-    # Generate node list
-    local node_list=""
+    # Generate node entries as an array
+    local node_entries=()
     for ((i = 0; i < ${#slave_ips[@]}; i++)); do
-        node_list+="NodeName=slave$((i + 1)) NodeAddr=${slave_ips[i]} Port=${slurmd_port} State=UNKNOWN\n"
+        node_entries+=("NodeName=slave$((i + 1)) NodeAddr=${slave_ips[i]} State=UNKNOWN")
     done
 
     # Generate slurm.conf
@@ -86,8 +85,7 @@ MpiDefault=none
 SlurmctldPidFile=/var/run/slurmctld.pid
 SlurmdPidFile=/var/run/slurmd.pid
 ProctrackType=proctrack/cgroup
-CacheGroups=0
-ReturnToService=1
+ReturnToService=2
 SlurmctldTimeout=300
 SlurmdTimeout=300
 InactiveLimit=0
@@ -95,8 +93,14 @@ MinJobAge=300
 KillWait=30
 Waittime=0
 
+# Resource selection
+SelectType=select/cons_tres
+SelectTypeParameters=CR_Core
+
 # Node configuration
-${node_list}
+$(printf "%s\n" "${node_entries[@]}")
+
+# Partition configuration
 PartitionName=debug Nodes=ALL Default=YES MaxTime=INFINITE State=UP
 EOF
 
