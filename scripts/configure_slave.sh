@@ -114,8 +114,8 @@ process_slaves() {
 
         info "Configuring slave $((i + 1))/$slave_count: ${slave_user}@${slave_ip}"
 
-        transfer_munge_key "$slave_ip" "$slave_user" "$slave_pass"
         configure_slave_node "$slave_ip" "$slave_user" "$slave_pass"
+        transfer_munge_key "$slave_ip" "$slave_user" "$slave_pass"
 
         success "Slave ${slave_ip} configured successfully"
     done
